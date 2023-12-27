@@ -96,7 +96,7 @@ public class MapMaker : MonoBehaviour
                 HexType newHex = hit.collider.gameObject.GetComponent<HexType>();
 
                 //FIX: type is deprecated
-                if (newHex.type == 0)
+                if (newHex.GetHexBiome() == 0)
                 {
                     newHex.SetHexBiome(2); // swap with Grasslands sprite
                     newHex.grow = Mathf.RoundToInt(grow.x + Random.value * (grow.y - grow.x));
@@ -165,17 +165,17 @@ public class MapMaker : MonoBehaviour
         foreach(Transform child in hexes.transform)
         {
             //Debug.Log("child found");
-            HexType hexType = child.GetComponent<HexType>();
+            HexType childHex = child.GetComponent<HexType>();
             
             //if the hex is not water, skip it
-            if(hexType.GetHexBiome() > 1)
+            if(childHex.GetHexBiome() > 1)
             {
                 //Debug.Log("Hex is not water");
                 continue;
             }
             
             //else, check if it has a land neighbor
-            Vector2 currentPosition = transform.position;
+            Vector2 currentPosition = child.position;
             List<Vector2> neighbors = new List<Vector2>();
             neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor, currentPosition.y));
             neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor, currentPosition.y));
@@ -195,9 +195,9 @@ public class MapMaker : MonoBehaviour
                     {
                         //if it is, set the current hex to shallow water
                         //Debug.Log("Neighbor is land");
-                        if (hexType != null)
+                        if (childHex != null)
                         {
-                            hexType.SetHexBiome(1);
+                            childHex.SetHexBiome(1);
                         }
                         break;
                     }

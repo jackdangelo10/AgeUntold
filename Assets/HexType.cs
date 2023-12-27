@@ -16,7 +16,7 @@ public class HexType : MonoBehaviour
     private const float VerticalOffsetFactor = .475f;
     
     //Hex Instance Data
-    private int _hexBiomeIndex; //assigned numbers for biomes
+    private int _hexBiomeIndex = 0; //assigned numbers for biomes
     private string _hexBiomeName; //name of hex
     private Resource[] _resources;
     private int _settlementLevel; //0 = no settlement, 1 = village, 2 = town, 3 = city
@@ -124,7 +124,7 @@ public class HexType : MonoBehaviour
                 HexType newHex = hit.collider.gameObject.GetComponent<HexType>();
 
                 //FIX: type is deprecated
-                if (newHex.type == 0)
+                if (newHex.GetHexBiome() == 0)
                 {
                     // swap with Grasslands sprite
                     newHex.SetHexBiome(2);
