@@ -34,6 +34,11 @@ public class HexType : MonoBehaviour
             GetComponent<SpriteRenderer>().sprite = sprite;
         }
     }
+    
+    public int GetHexBiome()
+    {
+        return _hexBiomeIndex;
+    }
 
     public void SetHexBiome(int biome)
     {
@@ -118,6 +123,7 @@ public class HexType : MonoBehaviour
             {
                 HexType newHex = hit.collider.gameObject.GetComponent<HexType>();
 
+                //FIX: type is deprecated
                 if (newHex.type == 0)
                 {
                     // swap with Grasslands sprite

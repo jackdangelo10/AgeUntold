@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Scripting;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -34,6 +35,7 @@ public class MapMaker : MonoBehaviour
         //delay the generation of the ocean background so that the camera can be centered first
         GenerateOceanBackground();
         GenerateLandPoints();
+        AddShallowWater();
     }
     
     private void GenerateOceanBackground()
@@ -93,6 +95,7 @@ public class MapMaker : MonoBehaviour
             {
                 HexType newHex = hit.collider.gameObject.GetComponent<HexType>();
 
+                //FIX: type is deprecated
                 if (newHex.type == 0)
                 {
                     newHex.SetHexBiome(2); // swap with Grasslands sprite
@@ -159,7 +162,48 @@ public class MapMaker : MonoBehaviour
 
     private void AddShallowWater()
     {
-        
+        foreach(Transform child in hexes.transform)
+        {
+            //Debug.Log("child found");
+            HexType hexType = child.GetComponent<HexType>();
+            
+            //if the hex is not water, skip it
+            if(hexType.GetHexBiome() > 1)
+            {
+                //Debug.Log("Hex is not water");
+                continue;
+            }
+            
+            //else, check if it has a land neighbor
+            Vector2 currentPosition = transform.position;
+            List<Vector2> neighbors = new List<Vector2>();
+            neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor, currentPosition.y));
+            neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor, currentPosition.y));
+            neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor / 2, currentPosition.y + VerticalOffsetFactor));
+            neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor / 2, currentPosition.y - VerticalOffsetFactor));
+            neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor / 2, currentPosition.y + VerticalOffsetFactor));
+            neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor / 2, currentPosition.y - VerticalOffsetFactor));
+
+            for (int i = 0; i < neighbors.Count; i++)
+            {
+                RaycastHit2D hit = Physics2D.Raycast(neighbors[i], neighbors[i], 0, LayerMask.GetMask("Default"));
+                if (hit)
+                {
+                    HexType testHex = hit.collider.gameObject.GetComponent<HexType>();
+                    //test if the hex is land
+                    if(testHex.GetHexBiome() > 1)
+                    {
+                        //if it is, set the current hex to shallow water
+                        //Debug.Log("Neighbor is land");
+                        if (hexType != null)
+                        {
+                            hexType.SetHexBiome(1);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     
