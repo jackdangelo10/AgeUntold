@@ -95,7 +95,7 @@ public class MapMaker : MonoBehaviour
 
                 if (newHex.type == 0)
                 {
-                    newHex.SwapType(1); // swap with grass hex
+                    newHex.SetHexBiome(2); // swap with Grasslands sprite
                     newHex.grow = Mathf.RoundToInt(grow.x + Random.value * (grow.y - grow.x));
                     newHex.freq = freq;
                     newHex.width = Mathf.RoundToInt(mapSize.x);
