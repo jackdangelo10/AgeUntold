@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -166,10 +167,15 @@ public class MapMaker : MonoBehaviour
             //Debug.Log("child found");
             HexType childHex = child.GetComponent<HexType>();
             
-            //if the hex is not water, skip it
+            //if the hex is not water, check if it is an edge case and fix it
             if(childHex.GetHexBiome() > 1)
             {
-                //Debug.Log("Hex is not water");
+                float x = childHex.transform.position.x;
+                if(x == 0 || ToolBox.ApproximatelyEqual(x, HorizontalOffsetFactor/2) || ToolBox.ApproximatelyEqual(x,mapSize.x * HorizontalOffsetFactor) || 
+                   ToolBox.ApproximatelyEqual(x, mapSize.x * HorizontalOffsetFactor - HorizontalOffsetFactor / 2))
+                {
+                    childHex.SetHexBiome(1);
+                }
                 continue;
             }
             
@@ -203,44 +209,79 @@ public class MapMaker : MonoBehaviour
                 }
             }
         }
+        
     }
 
     private void AddBiomes()
     {
         
         GameObject hexesParent = GameObject.Find("Hexes");
-
+        List<float> xValues = GenerateRandomXValues(mapSize.x * HorizontalOffsetFactor, 3);
+        foreach (float val in xValues)
+        {
+            Debug.Log("x value: " + val + "");
+        }
+        
         if (hexesParent != null)
         {
             for (int i = 0; i < hexesParent.transform.childCount; i++)
             {
                 GameObject currentHexIso = hexesParent.transform.GetChild(i).gameObject;
                 HexType currentHexType = currentHexIso.GetComponent<HexType>();
-
+                
                 //if hex is land and in the north or south, high chance of being tundra.
                 //if hex is land and in 
-                currentHexType.SetHexBiome(BiomeSelector(currentHexIso.transform.position.y, mapSize.y * VerticalOffsetFactor))
+                if (currentHexType.GetHexBiome() > 1)
+                {
+                    Vector2 position = currentHexIso.transform.position;
+                    currentHexType.SetHexBiome(BiomeSelector(position.y, mapSize.y * VerticalOffsetFactor));
+                }
             }
-        }
-        else
-        {
-            Debug.Log("Hexes parent not found");
         }
     }
     
     public int BiomeSelector(float y, float yMax)
     {
-        // Define ranges for Grasslands
+        // Define ranges for Grasslands and Tundra
         float grasslandsLower = 0.1f * yMax;
         float grasslandsUpper = 0.9f * yMax;
         float grasslandsMidLower = yMax / 3;
         float grasslandsMidUpper = 2 * yMax / 3;
+        float tundraMargin = 0.15f * yMax;
+        
+        
+        // Tundra probability - very high near the poles
+        float tundraProb;
+        if (y < tundraMargin || y > yMax - tundraMargin)
+        {
+            float distanceFromPole = Mathf.Min(y, yMax - y);
+            tundraProb = Mathf.Clamp01(1 - Mathf.Pow(distanceFromPole / tundraMargin, 2));
+        }
+        else
+        {
+            tundraProb = 0;
+        }
 
-        // Probability distributions
-        float tundraProb = Mathf.Min(y / yMax, (yMax - y) / yMax);  // Higher near 0 and yMax
-        float desertProb = Mathf.Max(0, 1 - Mathf.Abs(y - yMax / 2) / (yMax / 2));  // Higher near yMax/2
-        float grasslandsProb = (grasslandsLower <= y && y <= grasslandsMidLower) ||
-                               (grasslandsMidUpper <= y && y <= grasslandsUpper) ? 0.5f : 0;
+        // Desert probability - reduced
+        float desertScalingFactor = 0.4f;
+        float desertProb = Mathf.Max(0, 1 - Mathf.Abs(y - yMax / 2) / (yMax / 4)) * desertScalingFactor;
+
+        // Grasslands probability - small chance in the middle
+        float middleGrasslandsProb = 0.1f; // Small probability for grasslands in the middle
+        float grasslandsProb;
+        if (grasslandsLower <= y && y <= grasslandsMidLower ||
+            grasslandsMidUpper <= y && y <= grasslandsUpper)
+        {
+            grasslandsProb = 0.5f; // Regular probability in specified ranges
+        }
+        else if (y > grasslandsMidLower && y < grasslandsMidUpper)
+        {
+            grasslandsProb = middleGrasslandsProb; // Small chance in the middle
+        }
+        else
+        {
+            grasslandsProb = 0;
+        }
 
         // Normalize probabilities (including a chance for 'None')
         float totalProb = tundraProb + desertProb + grasslandsProb;
@@ -254,12 +295,30 @@ public class MapMaker : MonoBehaviour
         // Decide the biome
         float randomChoice = UnityEngine.Random.Range(0f, 1f);
         if (randomChoice < tundraProb)
-            return 4; //Tundra sprite index
+            return 4; // Tundra sprite index
         else if (randomChoice < tundraProb + desertProb)
-            return 5; //Desert sprite index
+            return 5; // Desert sprite index
         else if (randomChoice < tundraProb + desertProb + grasslandsProb)
-            return 2; //Grasslands sprite index
+            return 2; // Grasslands sprite index
         else
-            return 3; //remain plains
+            return 3; // Remain plains
     }
+    
+    
+    
+    
+    //DEPRECATED??????
+    private List<float> GenerateRandomXValues(float xMax, int maxCount)
+    {
+        List<float> xValues = new List<float>();
+        int count = UnityEngine.Random.Range(0, maxCount + 1);
+
+        for (int i = 0; i < count; i++)
+        {
+            xValues.Add(UnityEngine.Random.Range(0f, xMax));
+        }
+
+        return xValues;
+    }
+    
 }
