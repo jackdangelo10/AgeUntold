@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 //NOTES: Camera adjustments that need to be made: 
@@ -135,6 +136,11 @@ public class CameraControl : MonoBehaviour
         {
             moveDelay -= Time.deltaTime;
         }
+    }
+
+    void LateUpdate()
+    {
+        
     }
 
     

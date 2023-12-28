@@ -66,16 +66,7 @@ public class HexType : MonoBehaviour
                 _hexBiomeName = "Desert";
                 break;
             case 6:
-                _hexBiomeName = "Mountain";
-                break;
-            case 7:
-                _hexBiomeName = "Hills";
-                break;
-            case 8:
                 _hexBiomeName = "Wasteland";
-                break;
-            case 9:
-                _hexBiomeName = "Forrest";
                 break;
         }
     }
@@ -122,12 +113,11 @@ public class HexType : MonoBehaviour
             if (hit)
             {
                 HexType newHex = hit.collider.gameObject.GetComponent<HexType>();
-
-                //FIX: type is deprecated
+                
                 if (newHex.GetHexBiome() == 0)
                 {
-                    // swap with Grasslands sprite
-                    newHex.SetHexBiome(2);
+                    // swap with Plains sprite
+                    newHex.SetHexBiome(3);
 
                     if (grow - 1 > 0)
                     {

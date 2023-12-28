@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Scripting;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -36,6 +34,7 @@ public class MapMaker : MonoBehaviour
         GenerateOceanBackground();
         GenerateLandPoints();
         AddShallowWater();
+        AddBiomes();
     }
     
     private void GenerateOceanBackground()
@@ -45,7 +44,7 @@ public class MapMaker : MonoBehaviour
         for (float yCounter = 0; yCounter < mapSize.y; yCounter++)
         {
             y += VerticalOffsetFactor;
-            float x = 0;
+            float x;
             if(!offsetFlag)
             {
                 x = 0;
@@ -82,23 +81,22 @@ public class MapMaker : MonoBehaviour
 
             // Generate random y-coordinate within the central area of the map
             float randomY = Mathf.Round(Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
-            Debug.Log("Randomly generated coords: " + randomX + ", " + randomY + "");
+            //Debug.Log("Randomly generated coords: " + randomX + ", " + randomY + "");
 
             Vector2 pos = new Vector2(randomX, randomY);
-            Debug.Log("Randomly generated coords: " + pos.ToString());
+            //Debug.Log("Randomly generated coords: " + pos.ToString());
 
             pos = GetHexPosition(pos);
-            Debug.Log("This is the generated position of the hex: " + pos.ToString());
+            //Debug.Log("This is the generated position of the hex: " + pos.ToString());
 
             RaycastHit2D hit = Physics2D.Raycast(pos, pos, 0, LayerMask.GetMask("Default"));
             if (hit)
             {
                 HexType newHex = hit.collider.gameObject.GetComponent<HexType>();
-
-                //FIX: type is deprecated
+                
                 if (newHex.GetHexBiome() == 0)
                 {
-                    newHex.SetHexBiome(2); // swap with Grasslands sprite
+                    newHex.SetHexBiome(3); // swap with Plains sprite
                     newHex.grow = Mathf.RoundToInt(grow.x + Random.value * (grow.y - grow.x));
                     newHex.freq = freq;
                     newHex.width = Mathf.RoundToInt(mapSize.x);
@@ -160,6 +158,7 @@ public class MapMaker : MonoBehaviour
         
     }
 
+    //FIX: Handle case of hexes on the edge of the map
     private void AddShallowWater()
     {
         foreach(Transform child in hexes.transform)
@@ -206,5 +205,61 @@ public class MapMaker : MonoBehaviour
         }
     }
 
+    private void AddBiomes()
+    {
+        
+        GameObject hexesParent = GameObject.Find("Hexes");
+
+        if (hexesParent != null)
+        {
+            for (int i = 0; i < hexesParent.transform.childCount; i++)
+            {
+                GameObject currentHexIso = hexesParent.transform.GetChild(i).gameObject;
+                HexType currentHexType = currentHexIso.GetComponent<HexType>();
+
+                //if hex is land and in the north or south, high chance of being tundra.
+                //if hex is land and in 
+                currentHexType.SetHexBiome(BiomeSelector(currentHexIso.transform.position.y, mapSize.y * VerticalOffsetFactor))
+            }
+        }
+        else
+        {
+            Debug.Log("Hexes parent not found");
+        }
+    }
     
+    public int BiomeSelector(float y, float yMax)
+    {
+        // Define ranges for Grasslands
+        float grasslandsLower = 0.1f * yMax;
+        float grasslandsUpper = 0.9f * yMax;
+        float grasslandsMidLower = yMax / 3;
+        float grasslandsMidUpper = 2 * yMax / 3;
+
+        // Probability distributions
+        float tundraProb = Mathf.Min(y / yMax, (yMax - y) / yMax);  // Higher near 0 and yMax
+        float desertProb = Mathf.Max(0, 1 - Mathf.Abs(y - yMax / 2) / (yMax / 2));  // Higher near yMax/2
+        float grasslandsProb = (grasslandsLower <= y && y <= grasslandsMidLower) ||
+                               (grasslandsMidUpper <= y && y <= grasslandsUpper) ? 0.5f : 0;
+
+        // Normalize probabilities (including a chance for 'None')
+        float totalProb = tundraProb + desertProb + grasslandsProb;
+        if (totalProb > 1)
+        {
+            tundraProb /= totalProb;
+            desertProb /= totalProb;
+            grasslandsProb /= totalProb;
+        }
+
+        // Decide the biome
+        float randomChoice = UnityEngine.Random.Range(0f, 1f);
+        if (randomChoice < tundraProb)
+            return 4; //Tundra sprite index
+        else if (randomChoice < tundraProb + desertProb)
+            return 5; //Desert sprite index
+        else if (randomChoice < tundraProb + desertProb + grasslandsProb)
+            return 2; //Grasslands sprite index
+        else
+            return 3; //remain plains
+    }
 }
