@@ -5,7 +5,7 @@ public static class ToolBox
 {
     
     //compare two floats safely
-    public static bool ApproximatelyEqual(float a, float b, float epsilon = 0.001f)
+    public static bool ApproximatelyEqual(float a, float b, float epsilon)
     {
         return Mathf.Abs(a - b) < epsilon;
     }

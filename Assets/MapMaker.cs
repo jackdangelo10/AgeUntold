@@ -36,6 +36,8 @@ public class MapMaker : MonoBehaviour
         GenerateLandPoints();
         AddShallowWater();
         AddBiomes();
+        AddTerrain();
+        AddMountains(Random.Range(1,5));
     }
     
     private void GenerateOceanBackground()
@@ -159,7 +161,7 @@ public class MapMaker : MonoBehaviour
         
     }
 
-    //FIX: Handle case of hexes on the edge of the map
+    //FIX: Handle case of hexes on the edge of the map?????
     private void AddShallowWater()
     {
         foreach(Transform child in hexes.transform)
@@ -170,12 +172,6 @@ public class MapMaker : MonoBehaviour
             //if the hex is not water, check if it is an edge case and fix it
             if(childHex.GetHexBiome() > 1)
             {
-                float x = childHex.transform.position.x;
-                if(x == 0 || ToolBox.ApproximatelyEqual(x, HorizontalOffsetFactor/2) || ToolBox.ApproximatelyEqual(x,mapSize.x * HorizontalOffsetFactor) || 
-                   ToolBox.ApproximatelyEqual(x, mapSize.x * HorizontalOffsetFactor - HorizontalOffsetFactor / 2))
-                {
-                    childHex.SetHexBiome(1);
-                }
                 continue;
             }
             
@@ -216,11 +212,6 @@ public class MapMaker : MonoBehaviour
     {
         
         GameObject hexesParent = GameObject.Find("Hexes");
-        List<float> xValues = GenerateRandomXValues(mapSize.x * HorizontalOffsetFactor, 3);
-        foreach (float val in xValues)
-        {
-            Debug.Log("x value: " + val + "");
-        }
         
         if (hexesParent != null)
         {
@@ -303,22 +294,132 @@ public class MapMaker : MonoBehaviour
         else
             return 3; // Remain plains
     }
-    
-    
-    
-    
-    //DEPRECATED??????
-    private List<float> GenerateRandomXValues(float xMax, int maxCount)
-    {
-        List<float> xValues = new List<float>();
-        int count = UnityEngine.Random.Range(0, maxCount + 1);
 
-        for (int i = 0; i < count; i++)
+    private void AddTerrain()
+    {
+        GameObject hexesParent = GameObject.Find("Hexes");
+        if (hexesParent != null)
         {
-            xValues.Add(UnityEngine.Random.Range(0f, xMax));
+            for (int i = 0; i < hexesParent.transform.childCount; i++)
+            {
+                GameObject currentHexIso = hexesParent.transform.GetChild(i).gameObject;
+                HexType currentHexType = currentHexIso.GetComponent<HexType>();
+                
+                if(currentHexIso.GetComponent<HexType>().GetHexBiome() < 2) //skip water hexes
+                {
+                    continue;
+                }
+
+                // Retrieve position
+                Vector2 position = currentHexIso.transform.position;
+                
+                //keep this here for rn
+                Sprite sprite = null;
+                HexSpriteManager.Instance.GetTerrainSprite(2);
+                
+                
+                // Logic for determining terrain
+                float randomChoice = UnityEngine.Random.Range(0f, 1f);
+                
+                if(currentHexType.GetHexBiome() == 2) //grasslands
+                {
+                    if(randomChoice > .7f)
+                    {
+                        sprite = HexSpriteManager.Instance.GetTerrainSprite(0); //forest
+                    }
+                }
+                else if(currentHexType.GetHexBiome() == 3) //plains
+                {
+                    if(randomChoice > .8f)
+                    {
+                        sprite = HexSpriteManager.Instance.GetTerrainSprite(1); //hills
+                    }
+                }
+                else if(currentHexType.GetHexBiome() == 4) //tundra
+                {
+                    if (randomChoice > .9f)
+                    {
+                        sprite = HexSpriteManager.Instance.GetTerrainSprite(0); //forest
+                    }
+                }
+                else if(currentHexType.GetHexBiome() == 5) //desert
+                {
+                    
+                }
+                else if(currentHexType.GetHexBiome() == 6) //wasteland
+                {
+                    
+                }
+                else
+                {
+                    Debug.Log("Error: No terrain sprite found for biome index: " + currentHexType.GetHexBiome());
+                }
+        
+                
+                // create new GameObject child of current hex that is the terrain
+                if (sprite != null)
+                {
+                    // Create new GameObject
+                    GameObject terrainObject = new GameObject("TerrainObject");
+
+                    // Add SpriteRenderer and set the sprite
+                    SpriteRenderer spriteRenderer = terrainObject.AddComponent<SpriteRenderer>();
+                    spriteRenderer.sprite = sprite;
+                
+                    // Set the terrain object as a child of the current hex
+                    terrainObject.transform.SetParent(currentHexIso.transform, false);
+                
+                    // Set position to be the same as the parent hex
+                    terrainObject.transform.position = position;
+
+                    // Optionally adjust the sorting layer or order if needed, supposed to be one layer above the hex
+                    spriteRenderer.sortingOrder = currentHexIso.GetComponent<SpriteRenderer>().sortingOrder + 1;
+                }
+                
+            }
         }
 
-        return xValues;
     }
+
+    private void AddMountains(int mountainRangeCount)
+    {
+        int attempts = 0;
+        int mountainsPlaced = 0;
+
+        // Define a margin as before
+        float margin = mapSize.y * VerticalOffsetFactor * 0.2f;
+
+        while (mountainsPlaced < mountainRangeCount && attempts < mountainRangeCount * 2)
+        {
+            attempts++;
+
+            // Generate random x and y coordinates within the map bounds, avoiding the margins
+            float randomX = Mathf.Round(Random.value * (mapSize.x * HorizontalOffsetFactor - 1));
+            float randomY = Mathf.Round(Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
+
+            Vector2 pos = new Vector2(randomX, randomY);
+            pos = GetHexPosition(pos);
+
+            RaycastHit2D hit = Physics2D.Raycast(pos, pos, 0, LayerMask.GetMask("Default"));
+            if (hit)
+            {
+                GameObject currentHexIso = hit.collider.gameObject;
+                HexType hexType = currentHexIso.GetComponent<HexType>();
+
+                // Check if the hex is land (biome > 1)
+                if (hexType.GetHexBiome() > 1)
+                {
+                    hexType.SetHexBiome(7); // Set the biome to mountains
+                    
+                    // Additional mountain-specific properties can be set here
+                    // For example: hexType.someMountainProperty = someValue;
+
+                    mountainsPlaced++;
+                }
+            }
+        }
+    }
+
+    
     
 }

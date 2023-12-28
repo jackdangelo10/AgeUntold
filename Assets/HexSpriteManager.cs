@@ -6,6 +6,7 @@ public class HexSpriteManager : MonoBehaviour
 {
     // Array to hold sprites for each biome
     public Sprite[] biomeSprites;
+    public Sprite[] terrainSprites;
 
     // Static instance for global access
     public static HexSpriteManager Instance { get; private set; }
@@ -36,6 +37,20 @@ public class HexSpriteManager : MonoBehaviour
         else
         {
             Debug.LogWarning("No sprite found for biome index: " + biomeIndex);
+            return null;
+        }
+    }
+    
+    public Sprite GetTerrainSprite(int terrainIndex)
+    {
+        // Check if the index is within the range of the array
+        if (terrainIndex >= 0 && terrainIndex < terrainSprites.Length)
+        {
+            return terrainSprites[terrainIndex];
+        }
+        else
+        {
+            Debug.LogWarning("No sprite found for terrain index: " + terrainIndex);
             return null;
         }
     }

@@ -68,6 +68,9 @@ public class HexType : MonoBehaviour
             case 6:
                 _hexBiomeName = "Wasteland";
                 break;
+            case 7:
+                _hexBiomeName = "Mountain";
+                break;
         }
     }
 
