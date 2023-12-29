@@ -37,7 +37,7 @@ public class MapMaker : MonoBehaviour
         AddShallowWater();
         AddBiomes();
         AddTerrain();
-        AddMountains(Random.Range(1,5));
+        AddMountains(Random.Range(1,5) + 4);
     }
     
     private void GenerateOceanBackground()
@@ -177,13 +177,7 @@ public class MapMaker : MonoBehaviour
             
             //else, check if it has a land neighbor
             Vector2 currentPosition = child.position;
-            List<Vector2> neighbors = new List<Vector2>();
-            neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor, currentPosition.y));
-            neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor, currentPosition.y));
-            neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor / 2, currentPosition.y + VerticalOffsetFactor));
-            neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor / 2, currentPosition.y - VerticalOffsetFactor));
-            neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor / 2, currentPosition.y + VerticalOffsetFactor));
-            neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor / 2, currentPosition.y - VerticalOffsetFactor));
+            List<Vector2> neighbors = ToolBox.GetNeighbors(currentPosition);
 
             for (int i = 0; i < neighbors.Count; i++)
             {
@@ -313,10 +307,7 @@ public class MapMaker : MonoBehaviour
                 // Retrieve position
                 Vector2 position = currentHexIso.transform.position;
                 
-                //keep this here for rn
                 Sprite sprite = null;
-                HexSpriteManager.Instance.GetTerrainSprite(2);
-                
                 
                 // Logic for determining terrain
                 float randomChoice = UnityEngine.Random.Range(0f, 1f);
@@ -400,19 +391,74 @@ public class MapMaker : MonoBehaviour
             Vector2 pos = new Vector2(randomX, randomY);
             pos = GetHexPosition(pos);
 
+            // takes a source hex and turns it into a mountain range
             RaycastHit2D hit = Physics2D.Raycast(pos, pos, 0, LayerMask.GetMask("Default"));
             if (hit)
             {
                 GameObject currentHexIso = hit.collider.gameObject;
                 HexType hexType = currentHexIso.GetComponent<HexType>();
-
+                
                 // Check if the hex is land (biome > 1)
                 if (hexType.GetHexBiome() > 1)
                 {
-                    hexType.SetHexBiome(7); // Set the biome to mountains
+                    hexType.SetHexBiome(7); // Set the source hex's biome to mountains
+                    //delete other terrain
+                    foreach (Transform child in hexType.gameObject.transform)
+                    {
+                        GameObject.Destroy(child.gameObject);
+                    }
                     
-                    // Additional mountain-specific properties can be set here
-                    // For example: hexType.someMountainProperty = someValue;
+                    int mountainMax = UnityEngine.Random.Range(1, 9); //max number of mountains in a mountain range
+                    int mountainCount = 1;
+                    int waterCount = 0;
+                    
+                    // Get the hex at the random neighbor
+                    int randomNeighbor = UnityEngine.Random.Range(0, 6);
+                    while(mountainCount < mountainMax)
+                    {
+                        //collect neighboring hexes
+                        List<Vector2> neighbors = ToolBox.GetNeighbors(currentHexIso.transform.position);    
+                        Debug.Log("randomNeighbor: " + randomNeighbor + "");
+                        
+                        RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[randomNeighbor], neighbors[randomNeighbor], 0, LayerMask.GetMask("Default"));
+                        if (neighborHit)
+                        {
+                            HexType neighborHexType = neighborHit.collider.gameObject.GetComponent<HexType>();
+                            // Check if the hex is land (biome > 1)
+                            if (neighborHexType.GetHexBiome() > 1)
+                            {
+                                // Set the biome to hills
+                                neighborHexType.SetHexBiome(7); //set the neighbor to mountains
+                                //delete other terrain
+                                foreach (Transform child in neighborHexType.gameObject.transform)
+                                {
+                                    GameObject.Destroy(child.gameObject);
+                                }
+                                
+                                currentHexIso = neighborHit.collider.gameObject; //set the current hex to the neighbor
+                                randomNeighbor = UnityEngine.Random.Range(0, 6); //set the random neighbor to a new random neighbor
+                                mountainCount++;
+                            }
+                            else
+                            {
+                                //if the neighbor is water, increment the water count and change which neighbor is checked
+                                //circular increment of randomNeighbor
+                                randomNeighbor = (randomNeighbor + 1) % neighbors.Count;
+                                waterCount++;
+                            }
+                            
+                            //if there are too many water hexes as neighbors, forget the mountain range
+                            if(waterCount > 5)
+                            {
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            //if the neighbor is off the map, forget the mountain range
+                            break;
+                        }
+                    }
 
                     mountainsPlaced++;
                 }

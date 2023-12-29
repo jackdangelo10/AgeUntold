@@ -90,13 +90,7 @@ public class HexType : MonoBehaviour
     public void Grow()
     {
         Vector2 currentPosition = transform.position;
-        List<Vector2> neighbors = new List<Vector2>();
-        neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor, currentPosition.y));
-        neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor, currentPosition.y));
-        neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor / 2, currentPosition.y + VerticalOffsetFactor));
-        neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor / 2, currentPosition.y - VerticalOffsetFactor));
-        neighbors.Add(new Vector2(currentPosition.x - HorizontalOffsetFactor / 2, currentPosition.y + VerticalOffsetFactor));
-        neighbors.Add(new Vector2(currentPosition.x + HorizontalOffsetFactor / 2, currentPosition.y - VerticalOffsetFactor));
+        List<Vector2> neighbors = ToolBox.GetNeighbors(currentPosition);
 
         for (int i = 0; i < freq; i++)
         {
