@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
+using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -18,6 +18,9 @@ public class MapMaker : MonoBehaviour
 
     public Vector2 grow = new Vector2(4, 7);
     public int freq = 3;
+    public int maxRiverSourceCount = 1;
+    
+    
     private void Generate()
     {
         foreach(Transform child in hexes.transform)
@@ -34,10 +37,12 @@ public class MapMaker : MonoBehaviour
         //delay the generation of the ocean background so that the camera can be centered first
         GenerateOceanBackground();
         GenerateLandPoints();
-        AddShallowWater();
+        List<Tuple<HexType, int>> riverSources = AddShallowWater(); //optimization where we only check shallow water neighbor hexes for river sources
         AddBiomes();
-        AddTerrain();
-        AddMountains(Random.Range(1,5) + 4);
+        AddTerrain(); //also adds rivers
+        AddMountains(UnityEngine.Random.Range(1,5) + 4);
+        Debug.Log("riverSources.Count: " + riverSources.Count + " ");
+        AddRivers(riverSources);
     }
     
     private void GenerateOceanBackground()
@@ -80,10 +85,10 @@ public class MapMaker : MonoBehaviour
             attempts += 1;
 
             // Generate random x-coordinate as before
-            float randomX = Mathf.Round(Random.value * (mapSize.x * HorizontalOffsetFactor - 1));
+            float randomX = Mathf.Round(UnityEngine.Random.value * (mapSize.x * HorizontalOffsetFactor - 1));
 
             // Generate random y-coordinate within the central area of the map
-            float randomY = Mathf.Round(Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
+            float randomY = Mathf.Round(UnityEngine.Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
             //Debug.Log("Randomly generated coords: " + randomX + ", " + randomY + "");
 
             Vector2 pos = new Vector2(randomX, randomY);
@@ -100,7 +105,7 @@ public class MapMaker : MonoBehaviour
                 if (newHex.GetHexBiome() == 0)
                 {
                     newHex.SetHexBiome(3); // swap with Plains sprite
-                    newHex.grow = Mathf.RoundToInt(grow.x + Random.value * (grow.y - grow.x));
+                    newHex.grow = Mathf.RoundToInt(grow.x + UnityEngine.Random.value * (grow.y - grow.x));
                     newHex.freq = freq;
                     newHex.width = Mathf.RoundToInt(mapSize.x);
 
@@ -162,8 +167,9 @@ public class MapMaker : MonoBehaviour
     }
 
     //FIX: Handle case of hexes on the edge of the map?????
-    private void AddShallowWater()
+    private List<Tuple<HexType, int>> AddShallowWater()
     {
+        List<Tuple<HexType, int>> riverSources = new List<Tuple<HexType, int>>();
         foreach(Transform child in hexes.transform)
         {
             //Debug.Log("child found");
@@ -194,12 +200,20 @@ public class MapMaker : MonoBehaviour
                         {
                             childHex.SetHexBiome(1);
                         }
+                        
+                        //chance to add the testHex (which is now confirmed to be land next to shallow water) it to the list of river sources
+                        if(UnityEngine.Random.Range(0f, 1f) > .9f && riverSources.Count < maxRiverSourceCount)
+                        {
+                            //pairs the hex with the index of the neighbor that is shallow water
+                            riverSources.Add(new Tuple<HexType, int>(testHex, (i + 3) % 6)); //the +3 is to get the opposite neighbor
+                        }
+                        
                         break;
                     }
                 }
             }
         }
-        
+        return riverSources;
     }
 
     private void AddBiomes()
@@ -366,7 +380,6 @@ public class MapMaker : MonoBehaviour
                     // Optionally adjust the sorting layer or order if needed, supposed to be one layer above the hex
                     spriteRenderer.sortingOrder = currentHexIso.GetComponent<SpriteRenderer>().sortingOrder + 1;
                 }
-                
             }
         }
 
@@ -385,8 +398,8 @@ public class MapMaker : MonoBehaviour
             attempts++;
 
             // Generate random x and y coordinates within the map bounds, avoiding the margins
-            float randomX = Mathf.Round(Random.value * (mapSize.x * HorizontalOffsetFactor - 1));
-            float randomY = Mathf.Round(Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
+            float randomX = Mathf.Round(UnityEngine.Random.value * (mapSize.x * HorizontalOffsetFactor - 1));
+            float randomY = Mathf.Round(UnityEngine.Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
 
             Vector2 pos = new Vector2(randomX, randomY);
             pos = GetHexPosition(pos);
@@ -418,7 +431,7 @@ public class MapMaker : MonoBehaviour
                     {
                         //collect neighboring hexes
                         List<Vector2> neighbors = ToolBox.GetNeighbors(currentHexIso.transform.position);    
-                        Debug.Log("randomNeighbor: " + randomNeighbor + "");
+                        //Debug.Log("randomNeighbor: " + randomNeighbor + "");
                         
                         RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[randomNeighbor], neighbors[randomNeighbor], 0, LayerMask.GetMask("Default"));
                         if (neighborHit)
@@ -466,6 +479,126 @@ public class MapMaker : MonoBehaviour
         }
     }
 
-    
+
+
+    private void AddRivers(List<Tuple<HexType, int>> riverSources)
+    {
+        foreach(Tuple<HexType, int> riverSource in riverSources)
+        {
+            GenerateRiver(riverSource); 
+        }
+    }
+
+    private void GenerateRiver(Tuple<HexType, int> riverSource)
+    {
+        Debug.Log("NEW RIVER TILE");
+        
+        HexType hexType = riverSource.Item1;
+        int flowSourceIndex = riverSource.Item2;
+        GameObject currentHexIso = hexType.gameObject;
+        
+        
+        //decide if the river splits; 1-3 branches
+        float branchSplitChance = UnityEngine.Random.Range(0f, 1f);
+        int branchCount = 1;
+        if (branchSplitChance > .95f)
+        {
+            branchCount = 3;
+        }
+        else if(branchSplitChance > .75f)
+        {
+            branchCount = 2;
+        }
+        
+        Debug.Log("branchCount: " + branchCount + "");
+        
+        
+        List<int> chosenBranchIndices = new List<int>();
+        
+        Vector2 currentPosition = hexType.transform.position;
+        List<Vector2> neighbors = ToolBox.GetNeighbors(currentPosition);
+        
+        //selects a random starting index that isn't the flowSourceIndex
+        int randomNeighbor = UnityEngine.Random.Range(0, 6);
+        int attempts = 0;
+        
+        
+        while (chosenBranchIndices.Count < branchCount && attempts < 6)
+        {
+            //skip the flowSourceIndex
+            if (randomNeighbor == flowSourceIndex)
+            {
+                attempts++;
+                continue;
+            }
+            
+            //check if the neighbor is land
+            RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[randomNeighbor], neighbors[randomNeighbor], 0, LayerMask.GetMask("Default"));
+            if (neighborHit)
+            {
+                HexType neighborHexType = neighborHit.collider.gameObject.GetComponent<HexType>();
+                // Check if the hex is land (biome > 1)
+                if (neighborHexType.GetHexBiome() > 1)
+                {
+                    //add the neighbor to the chosenBranchIndices
+                    chosenBranchIndices.Add(randomNeighbor);
+                }
+
+                attempts++;
+            }
+        }
+
+       
+        
+        //retrieve the correct sprite based on the flowSourceIndex and the chosenBranchIndices
+        Sprite sprite = HexSpriteManager.Instance.GetRiverSprite(flowSourceIndex, chosenBranchIndices);
+        
+        // create new GameObject child of hexType that is the river
+        if (sprite != null)
+        {
+            // Delete other terrain
+            foreach (Transform child in currentHexIso.transform)
+            {
+                GameObject.Destroy(child.gameObject);
+            }
+            
+            // Create new GameObject
+            GameObject terrainObject = new GameObject("RiverObject");
+
+            // Add SpriteRenderer and set the sprite
+            SpriteRenderer spriteRenderer = terrainObject.AddComponent<SpriteRenderer>();
+            spriteRenderer.sprite = sprite;
+                
+            // Set the terrain object as a child of the current hex
+            terrainObject.transform.SetParent(currentHexIso.transform, false);
+                
+            // Set position to be the same as the parent hex
+            terrainObject.transform.position = currentHexIso.transform.position;
+
+            // Optionally adjust the sorting layer or order if needed, supposed to be one layer above the hex
+            spriteRenderer.sortingOrder = currentHexIso.GetComponent<SpriteRenderer>().sortingOrder + 1;
+        }
+        
+        //if there are branches, generate them recursively
+        if(.5f < UnityEngine.Random.Range(0f, 1f))
+        {
+            foreach(int i in chosenBranchIndices)
+            {
+                //set hexType to the neighbor at the chosenBranchIndex
+                RaycastHit2D hit = Physics2D.Raycast(neighbors[i], neighbors[i], 0, LayerMask.GetMask("Default"));
+                if (hit)
+                {
+                    hexType = hit.collider.gameObject.GetComponent<HexType>();
+                    //time is incremented to limit the length of rivers
+                    GenerateRiver(new Tuple<HexType, int>(hexType, (i + 3) % 6)); //the +3 is to get the opposite neighbor
+                }
+
+            }
+        }
+        else
+        {
+            Debug.Log("END OF RIVER");
+        }
+    }
     
 }
