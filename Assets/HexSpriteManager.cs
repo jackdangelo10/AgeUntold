@@ -69,7 +69,7 @@ public class HexSpriteManager : MonoBehaviour
         { "12345", 55 },
         { "012345", 56 }
     };
-
+    
     // Static instance for global access
     public static HexSpriteManager Instance { get; private set; }
 
@@ -135,7 +135,7 @@ public class HexSpriteManager : MonoBehaviour
             Debug.Log("riverSprites size: " + riverSprites.Length + "");
             return riverSprites[spriteIndex];
         }
-
+        
         return null;
     }
 }

@@ -128,6 +128,18 @@ public class HexType : MonoBehaviour
         }
     }
     
+    public bool HasRiver()
+    {
+        foreach (Transform child in transform)
+        {
+            if (child.gameObject.name == "RiverObject")
+            {
+                return true; // Found a child named "RiverObject"
+            }
+        }
+        return false; // No child named "RiverObject" found
+    }
+    
     
     // Start is called before the first frame update
     void Start()
