@@ -27,6 +27,28 @@ public class HexIterator
         this._iterationAxis = axis;
     }
 
+
+    public int GetAxis()
+    {
+        switch(_iterationAxis)
+        {
+            case Axis.southwestToNortheast:
+                return 0;
+            case Axis.westToEast:
+                return 1;
+            case Axis.northwestToSoutheast:
+                return 2;
+            case Axis.northeastToSouthwest:
+                return 3;
+            case Axis.eastToWest:
+                return 4;
+            case Axis.southeastToNorthwest:
+                return 5;
+            default:
+                throw new System.ArgumentOutOfRangeException();
+        }
+    }
+
     public HexType Next()
     {
         switch (_iterationAxis)
