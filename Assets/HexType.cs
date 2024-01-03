@@ -90,7 +90,7 @@ public class HexType : MonoBehaviour
     public void Grow()
     {
         Vector2 currentPosition = transform.position;
-        List<Vector2> neighbors = ToolBox.GetNeighbors(currentPosition);
+        List<Vector2> neighbors = HexIterator.GetNeighbors(currentPosition);
 
         for (int i = 0; i < freq; i++)
         {
