@@ -11,6 +11,7 @@ public class MapMaker : MonoBehaviour
     private const float VerticalOffsetFactor = .475f;
     [FormerlySerializedAs("_mapSize")] public Vector2 mapSize = new Vector2(20, 30);
     public GameObject hex; //assigned in inspector as default hex
+    public GameObject river;
     public GameObject hexes; //assigned in inspector as parent of all hexes
     public int masses = 15;
     public Button generateButton;
@@ -89,13 +90,10 @@ public class MapMaker : MonoBehaviour
 
             // Generate random y-coordinate within the central area of the map
             float randomY = Mathf.Round(UnityEngine.Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
-            //Debug.Log("Randomly generated coords: " + randomX + ", " + randomY + "");
 
             Vector2 pos = new Vector2(randomX, randomY);
-            //Debug.Log("Randomly generated coords: " + pos.ToString());
 
             pos = GetHexPosition(pos);
-            //Debug.Log("This is the generated position of the hex: " + pos.ToString());
 
             RaycastHit2D hit = Physics2D.Raycast(pos, pos, 0, LayerMask.GetMask("Default"));
             if (hit)
@@ -172,7 +170,6 @@ public class MapMaker : MonoBehaviour
     {
         foreach(Transform child in hexes.transform)
         {
-            //Debug.Log("child found");
             HexType childHex = child.GetComponent<HexType>();
             
             //if the hex is not water, check if it is an edge case and fix it
@@ -195,7 +192,6 @@ public class MapMaker : MonoBehaviour
                     if(testHex.GetHexBiome() > 1)
                     {
                         //if it is, set the current hex to shallow water
-                        //Debug.Log("Neighbor is land");
                         if (childHex != null)
                         {
                             childHex.SetHexBiome(1);
@@ -423,7 +419,6 @@ public class MapMaker : MonoBehaviour
                     {
                         //collect neighboring hexes
                         List<Vector2> neighbors = HexIterator.GetNeighbors(currentHexIso.transform.position);    
-                        //Debug.Log("randomNeighbor: " + randomNeighbor + "");
                         
                         RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[randomNeighbor], neighbors[randomNeighbor], 0, LayerMask.GetMask("Default"));
                         if (neighborHit)
@@ -476,6 +471,7 @@ public class MapMaker : MonoBehaviour
     //FIX: some rivers go into ocean ????
     private void AddRivers()
     {
+        
         HashSet<Tuple<HexType, int>> riverSources = RandomRiverSources();
         HashSet<Tuple<HexType, int>> landSourceRiverSources = LandSourceRiverSources();
         riverSources.UnionWith(landSourceRiverSources);
@@ -516,51 +512,47 @@ public class MapMaker : MonoBehaviour
         
         
         
-        
-        
         List<Vector2> neighbors = HexIterator.GetNeighbors(currentPosition);
         
         
-        int chosenBranchIndex = -1;
+        int chosenSinkIndex = -1;
         int nextNeighbor = (ToolBox.Mod(flowSourceIndex + 3, 6));
         
-        //possibleBranchIndices is a list of indices that are possible directions for branches
-        List<int> possibleBranchIndices = new List<int>
+        //possibleSinkIndices is a list of indices that are possible directions for sinks
+        List<int> possibleSinkIndices = new List<int>
         {
             nextNeighbor,
             ToolBox.Mod(nextNeighbor + 1, 6),
             ToolBox.Mod(nextNeighbor - 1, 6)
         };
-
-        Debug.Log("Mod Test: " + (-1 % 6));
         
-        //display possibleBranchIndices
-        foreach (int i in possibleBranchIndices)
+        //display possibleSinkIndices
+        foreach (int i in possibleSinkIndices)
         {
-            Debug.Log("possibleBranchIndices: " + i + "");
+            Debug.Log("possibleSinkIndices: " + i + "");
         }
 
-        // Shuffle the possibleBranchIndices list to randomize the order
-        Shuffle(possibleBranchIndices);
+        // Shuffle the possibleSinkIndices list to randomize the order
+        Shuffle(possibleSinkIndices);
         
-        foreach (int branchIndex in possibleBranchIndices)
+        foreach (int sinkIndex in possibleSinkIndices)
         {
-            Debug.Log("attempted branch index: " + branchIndex);
-            RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[branchIndex], Vector2.zero, 0, LayerMask.GetMask("Default"));
+            Debug.Log("attempted sink index: " + sinkIndex);
+            RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[sinkIndex], Vector2.zero, 0, LayerMask.GetMask("Default"));
             if (neighborHit)
             {
                 HexType neighborHexType = neighborHit.collider.gameObject.GetComponent<HexType>();
                 // Check if the hex is valid for river continuation
-                if (neighborHexType.GetHexBiome() > 1 && !neighborHexType.HasRiver() && neighborHexType.GetHexBiome() != 7)
+                if (neighborHexType.GetHexBiome() > 1 && neighborHexType.GetRiver() == null && neighborHexType.GetHexBiome() != 7)
                 {
-                    chosenBranchIndex = branchIndex;
+                    chosenSinkIndex = sinkIndex;
                     break; // Valid neighbor found, exit loop
                 }
             }
         }
 
         // Check after the loop if a neighbor was chosen
-        if (chosenBranchIndex == -1)
+        if (chosenSinkIndex == -1)
         {
             Debug.Log("No suitable neighbor found, ending river generation.");
             foreach (Transform child in currentHexIso.transform)
@@ -573,44 +565,56 @@ public class MapMaker : MonoBehaviour
             Debug.Log("END OF RIVER");
             return;
         }
-        //Debug.Log("Chosen branch index: " + chosenBranchIndex + "");
         
-        //add the chosenBranchIndex to the chosenBranchIndices
-        List<int> chosenBranchIndices = new List<int>();
-        chosenBranchIndices.Add(chosenBranchIndex);
+        //add the chosenSinkIndex to the chosenSinkIndices
+        List<int> chosenSinkIndices = new List<int>();
+        chosenSinkIndices.Add(chosenSinkIndex);
         
-        //get the river sprite
-        Sprite riverSprite = HexSpriteManager.Instance.GetRiverSprite(flowSourceIndex, chosenBranchIndices);
         
-        //create a new GameObject child of current hex that is the river
-        if (riverSprite != null)
+        
+        //delete currentHexIso's children
+        foreach (Transform child in currentHexIso.transform)
         {
-            //delete other terrain
-            foreach (Transform child in hexType.gameObject.transform)
+            //if the child is a RiverIso, add all of its sinks to chosenSinkIndices
+            if (child.gameObject.GetComponent<RiverType>() != null)
             {
-                GameObject.Destroy(child.gameObject);
+                RiverType oldRiver = child.gameObject.GetComponent<RiverType>();
+                chosenSinkIndices.AddRange(oldRiver.GetSinks());
+                chosenSinkIndex = oldRiver.GetFlowSource();
             }
             
-            // Create new GameObject
-            GameObject riverObject = new GameObject("RiverObject");
+            GameObject.Destroy(child.gameObject);
+        }
+        
+        // Create a clone of the RiverIso prefab as currentHexIso's child
+        GameObject riverObject = Instantiate(river, currentPosition, Quaternion.identity, currentHexIso.transform);
+        //Debug.Log("INSTANTIATED RIVER");
 
-            // Add SpriteRenderer and set the sprite
-            SpriteRenderer spriteRenderer = riverObject.AddComponent<SpriteRenderer>();
-            spriteRenderer.sprite = riverSprite;
-                
-            // Set the terrain object as a child of the current hex
-            riverObject.transform.SetParent(currentHexIso.transform, false);
-                
-            // Set position to be the same as the parent hex
-            riverObject.transform.position = currentPosition;
+        // Get the RiverType component and set the river parameters
+        RiverType riverType = riverObject.GetComponent<RiverType>();
+        if (riverType != null)
+        {
+            riverType.SetRiver(flowSourceIndex, chosenSinkIndices);
+        }
+        else
+        {
+            Debug.LogError("RiverType component not found on the cloned RiverIso prefab");
+        }
 
-            // Optionally adjust the sorting layer or order if needed, supposed to be one layer above the hex
+        //Adjust the sorting order or other properties as needed
+        SpriteRenderer spriteRenderer = riverObject.GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
             spriteRenderer.sortingOrder = currentHexIso.GetComponent<SpriteRenderer>().sortingOrder + 1;
+        }
+        else
+        {
+            Debug.LogError("SpriteRenderer not found on the cloned RiverIso prefab");
         }
         
         
         //get the neighbor hex
-        RaycastHit2D chosenNeighborHit = Physics2D.Raycast(neighbors[chosenBranchIndex], neighbors[chosenBranchIndex], 0, LayerMask.GetMask("Default"));
+        RaycastHit2D chosenNeighborHit = Physics2D.Raycast(neighbors[chosenSinkIndex], neighbors[chosenSinkIndex], 0, LayerMask.GetMask("Default"));
         if (chosenNeighborHit)
         {
             HexType chosenNeighborHexType = chosenNeighborHit.collider.gameObject.GetComponent<HexType>();
@@ -618,7 +622,7 @@ public class MapMaker : MonoBehaviour
             if (chosenNeighborHexType.GetHexBiome() > 1)
             {
                 //set the neighbor hex to be the new current hex
-                GenerateRiver(new Tuple<HexType, int>(chosenNeighborHexType, ToolBox.Mod(chosenBranchIndex + 3, 6)), riverLength - 1);
+                GenerateRiver(new Tuple<HexType, int>(chosenNeighborHexType, ToolBox.Mod(chosenSinkIndex + 3, 6)), riverLength - 1);
             }
         }
     }
@@ -644,13 +648,10 @@ public class MapMaker : MonoBehaviour
 
             // Generate random y-coordinate within the central area of the map
             float randomY = Mathf.Round(UnityEngine.Random.value * (mapSize.y * VerticalOffsetFactor - 2 * margin) + margin - 1);
-            //Debug.Log("Randomly generated coords: " + randomX + ", " + randomY + "");
 
             Vector2 pos = new Vector2(randomX, randomY);
-            //Debug.Log("Randomly generated coords: " + pos.ToString());
 
             pos = GetHexPosition(pos);
-            //Debug.Log("This is the generated position of the hex: " + pos.ToString());
 
             RaycastHit2D hit = Physics2D.Raycast(pos, pos, 0, LayerMask.GetMask("Default"));
             if (hit)
@@ -660,36 +661,9 @@ public class MapMaker : MonoBehaviour
                 //test if its land
                 if (newHex.GetHexBiome() > 1)
                 {
-                    //decide orientation (go north, south, east, west)
-                    float chance = UnityEngine.Random.value;
                     
                     //go one direction until you find a water hex
-                    HexIterator iterator;
-                    if(chance < .1667f)
-                    {
-                        iterator = new HexIterator(pos, HexIterator.Axis.eastToWest);
-                    }
-                    else if(chance < .3333f)
-                    {
-                        iterator = new HexIterator(pos, HexIterator.Axis.westToEast);
-                    }
-                    else if(chance < .5f)
-                    {
-                        iterator = new HexIterator(pos, HexIterator.Axis.northeastToSouthwest);
-                    }
-                    else if(chance < .6667f)
-                    {
-                        iterator = new HexIterator(pos, HexIterator.Axis.southwestToNortheast);
-                    }
-                    else if(chance < .8333f)
-                    {
-                        iterator = new HexIterator(pos, HexIterator.Axis.northwestToSoutheast);
-                    }
-                    else
-                    {
-                        iterator = new HexIterator(pos, HexIterator.Axis.southeastToNorthwest);
-                    }
-                    
+                    HexIterator iterator = GetRandomHexIterator(pos);
                     
                     while (pos.x > 0 && pos.x < mapSize.x * HorizontalOffsetFactor && pos.y > 0 && pos.y < mapSize.y * VerticalOffsetFactor)
                     {
@@ -700,7 +674,7 @@ public class MapMaker : MonoBehaviour
                             Debug.Log("nextHex is null");
                             break;
                         }
-                            
+                        
                         //test if next Hex is water
                         if (nextHex.GetHexBiome() < 2)
                         {
@@ -709,9 +683,10 @@ public class MapMaker : MonoBehaviour
                             
                             pos = nextHex.transform.position;   
                             
+                            Debug.Log("(RANDOM SOURCE) supposed source location: " + pos.ToString());
+                            
                             List<Vector2> neighbors = HexIterator.GetNeighbors(pos);
-                            List<int> possibleBranchIndices = new List<int>();
-                            possibleBranchIndices.Add((ToolBox.Mod(iterator.GetAxis() + 3, 6)));
+                            List<int> possibleSinkIndices = new List<int>();
                             for (int i = 0; i < neighbors.Count; i++)
                             {
                                 RaycastHit2D sourceNeighborHit = Physics2D.Raycast(neighbors[i], neighbors[i], 0, LayerMask.GetMask("Default"));
@@ -721,16 +696,20 @@ public class MapMaker : MonoBehaviour
                                     //test if the neighbor is water
                                     if(testHex.GetHexBiome() < 2)
                                     {
-                                        //if it is, add the index to the possibleBranchIndices
-                                        possibleBranchIndices.Add(i);
+                                        //if it is, add the index to the possibleSinkIndices
+                                        possibleSinkIndices.Add(iterator.GetAxis());
                                     }
                                 }
                             }
                             
-                            //after all possibleBranchIndices are found, choose one at random
-                            Debug.Log("Possible branch indices count: " + possibleBranchIndices.Count + "");
+                            //output all possibleSinkIndices
+                            foreach (int i in possibleSinkIndices)
+                            {
+                                Debug.Log("possibleSinkIndices: " + i + "");
+                            }
                             
-                            int flowSourceIndex = possibleBranchIndices[UnityEngine.Random.Range(0, possibleBranchIndices.Count)];
+                            //after all possibleSinkIndices are found, choose one at random
+                            int flowSourceIndex = possibleSinkIndices[UnityEngine.Random.Range(0, possibleSinkIndices.Count)];
                             //add the river source to the list
                             
                             riverSources.Add(new Tuple<HexType, int>(nextHex, flowSourceIndex));
@@ -755,37 +734,10 @@ public class MapMaker : MonoBehaviour
         {
             Vector2 pos = landSource.transform.position;
             //go right or left until you find a water hex
-
-            //decide orientation (go north, south, east, west, etc)
-            //decide orientation (go north, south, east, west)
-            float chance = UnityEngine.Random.value;
+            
                     
             //go one direction until you find a water hex
-            HexIterator iterator;
-            if(chance < .1667f)
-            {
-                iterator = new HexIterator(pos, HexIterator.Axis.eastToWest);
-            }
-            else if(chance < .3333f)
-            {
-                iterator = new HexIterator(pos, HexIterator.Axis.westToEast);
-            }
-            else if(chance < .5f)
-            {
-                iterator = new HexIterator(pos, HexIterator.Axis.northeastToSouthwest);
-            }
-            else if(chance < .6667f)
-            {
-                iterator = new HexIterator(pos, HexIterator.Axis.southwestToNortheast);
-            }
-            else if(chance < .8333f)
-            {
-                iterator = new HexIterator(pos, HexIterator.Axis.northwestToSoutheast);
-            }
-            else
-            {
-                iterator = new HexIterator(pos, HexIterator.Axis.southeastToNorthwest);
-            }
+            HexIterator iterator = GetRandomHexIterator(pos);
             
             while (pos.x > 0 && pos.x < mapSize.x * HorizontalOffsetFactor)
             {
@@ -799,18 +751,16 @@ public class MapMaker : MonoBehaviour
                     break;
                 }
                 
-                Debug.Log("nextHex location: " + nextHex.transform.position.ToString() + "");
-                
                 if (nextHex.GetHexBiome() < 2)
                 {
                     //if it is, assign newHex to be the river source
                     nextHex = iterator.Previous();
                     
                     pos = nextHex.transform.position;
-                    Debug.Log("supposed source location: " + pos.ToString());
+                    Debug.Log("(LAND SOURCE) supposed source location: " + pos.ToString());
 
                     List<Vector2> neighbors = HexIterator.GetNeighbors(pos);
-                    List<int> possibleBranchIndices = new List<int>();
+                    List<int> possibleSinkIndices = new List<int>();
                     for (int i = 0; i < neighbors.Count; i++)
                     {
                         RaycastHit2D sourceNeighborHit = Physics2D.Raycast(neighbors[i], neighbors[i], 0,
@@ -821,15 +771,15 @@ public class MapMaker : MonoBehaviour
                             //test if the neighbor is water
                             if (testHex.GetHexBiome() < 2)
                             {
-                                //if it is, add the index to the possibleBranchIndices
-                                possibleBranchIndices.Add(i);
+                                //if it is, add the index to the possibleSinkIndices
+                                possibleSinkIndices.Add(i);
                             }
                         }
                     }
 
-                    //after all possibleBranchIndices are found, choose one at random
+                    //after all possibleSinkIndices are found, choose one at random
                     int flowSourceIndex =
-                        possibleBranchIndices[UnityEngine.Random.Range(0, possibleBranchIndices.Count)];
+                        possibleSinkIndices[UnityEngine.Random.Range(0, possibleSinkIndices.Count)];
                     //add the river source to the list
 
                     riverSources.Add(new Tuple<HexType, int>(nextHex, flowSourceIndex));
@@ -840,11 +790,55 @@ public class MapMaker : MonoBehaviour
 
         return riverSources;
     }
+
+
     
     
     
     
-    public static void Shuffle<T>(List<T> list)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    private static HexIterator GetRandomHexIterator(Vector2 pos)
+    {
+        float chance = UnityEngine.Random.value;
+        HexIterator iterator;
+        
+        if(chance < .1667f)
+        {
+            iterator = new HexIterator(pos, HexIterator.Axis.eastToWest);
+        }
+        else if(chance < .3333f)
+        {
+            iterator = new HexIterator(pos, HexIterator.Axis.westToEast);
+        }
+        else if(chance < .5f)
+        {
+            iterator = new HexIterator(pos, HexIterator.Axis.northeastToSouthwest);
+        }
+        else if(chance < .6667f)
+        {
+            iterator = new HexIterator(pos, HexIterator.Axis.southwestToNortheast);
+        }
+        else if(chance < .8333f)
+        {
+            iterator = new HexIterator(pos, HexIterator.Axis.northwestToSoutheast);
+        }
+        else
+        {
+            iterator = new HexIterator(pos, HexIterator.Axis.southeastToNorthwest);
+        }
+
+        return iterator;
+    }
+    
+    private static void Shuffle<T>(List<T> list)
     {
         System.Random random = new System.Random();
         int n = list.Count;

@@ -13,7 +13,6 @@ public class HexType : MonoBehaviour
     public int width = 120;
     
     private const float HorizontalOffsetFactor = 0.768f;
-    private const float VerticalOffsetFactor = .475f;
     
     //Hex Instance Data
     private int _hexBiomeIndex = 0; //assigned numbers for biomes
@@ -128,16 +127,17 @@ public class HexType : MonoBehaviour
         }
     }
     
-    public bool HasRiver()
+    public RiverType GetRiver()
     {
-        foreach (Transform child in transform)
+        RiverType riverType = this.GetComponentInChildren<RiverType>();
+        if (riverType != null)
         {
-            if (child.gameObject.name == "RiverObject")
-            {
-                return true; // Found a child named "RiverObject"
-            }
+            return riverType;
         }
-        return false; // No child named "RiverObject" found
+        else
+        {
+            return null;
+        }
     }
     
     
