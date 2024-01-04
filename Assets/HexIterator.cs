@@ -64,7 +64,7 @@ public class HexIterator
             case Axis.westToEast:
                 return NextEast();
             case Axis.northeastToSouthwest:
-                return NextSoutheast();
+                return NextSouthwest();
             default:
                 throw new System.ArgumentOutOfRangeException();
         }
@@ -72,6 +72,7 @@ public class HexIterator
 
     public HexType Previous()
     {
+        Debug.Log("Axis: " + _iterationAxis + "");
         switch (_iterationAxis)
         {
             case Axis.southwestToNortheast:
@@ -81,7 +82,7 @@ public class HexIterator
             case Axis.southeastToNorthwest:
                 return NextSoutheast();
             case Axis.northwestToSoutheast:
-                return NextNortheast();
+                return NextNorthwest();
             case Axis.westToEast:
                 return NextWest();
             case Axis.northeastToSouthwest:

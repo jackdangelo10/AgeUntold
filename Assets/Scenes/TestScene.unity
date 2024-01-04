@@ -265,7 +265,7 @@ MonoBehaviour:
   mapSize: {x: 120, y: 100}
   hex: {fileID: 6160422622246314959, guid: ac79774dd729980448230356b3dff5e7, type: 3}
   hexes: {fileID: 386505213}
-  masses: 15
+  masses: 1
   generateButton: {fileID: 1642495823}
   grow: {x: 20, y: 26}
   freq: 10

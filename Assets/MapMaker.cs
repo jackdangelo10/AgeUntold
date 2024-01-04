@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -484,6 +483,7 @@ public class MapMaker : MonoBehaviour
         foreach(Tuple<HexType, int> riverSource in riverSources)
         {
             int riverLength = UnityEngine.Random.Range(1, 18) + 3;
+            Debug.Log("START RIVER");
             GenerateRiver(riverSource, riverLength); 
         }
     }
@@ -495,7 +495,8 @@ public class MapMaker : MonoBehaviour
         int flowSourceIndex = riverSource.Item2;
         GameObject currentHexIso = hexType.gameObject;
         Vector2 currentPosition = hexType.transform.position;
-        //Debug.Log("Current position: " + currentPosition.ToString());
+        //single debug statement with the current position, flowSourceIndex, and riverLength
+        Debug.Log("currentPosition: " + currentPosition.ToString() + ", flowSourceIndex: " + flowSourceIndex + ", riverLength: " + riverLength + "");
         
         //Base case, turn it into shallow water
         if (riverLength <= 0)
@@ -508,7 +509,7 @@ public class MapMaker : MonoBehaviour
             
             //set the hex to shallow water
             hexType.SetHexBiome(1);
-            Debug.Log("END OF RIVER");
+            Debug.Log("END OF RIVER, riverLength: " + riverLength + "");
             return;
         }
         
@@ -519,32 +520,43 @@ public class MapMaker : MonoBehaviour
         
         List<Vector2> neighbors = HexIterator.GetNeighbors(currentPosition);
         
-        //Debug.Log("Current position: " + currentPosition.ToString() + " " + "Flow source index: " + flowSourceIndex + "");
         
         int chosenBranchIndex = -1;
-        int nextNeighbor = (flowSourceIndex + 3) % 6;
-        List<int> possibleBranchIndices = new List<int>();
-        possibleBranchIndices.Add(nextNeighbor);
-        possibleBranchIndices.Add((nextNeighbor + 1) % 6);
-        possibleBranchIndices.Add((nextNeighbor - 1) % 6);
-        int attempts = 0;        
-        while(attempts < 3)
+        int nextNeighbor = (ToolBox.Mod(flowSourceIndex + 3, 6));
+        
+        //possibleBranchIndices is a list of indices that are possible directions for branches
+        List<int> possibleBranchIndices = new List<int>
         {
-            int randomIndex = UnityEngine.Random.Range(0, possibleBranchIndices.Count);
-            RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[randomIndex], Vector2.zero, 0, LayerMask.GetMask("Default"));
+            nextNeighbor,
+            ToolBox.Mod(nextNeighbor + 1, 6),
+            ToolBox.Mod(nextNeighbor - 1, 6)
+        };
+
+        Debug.Log("Mod Test: " + (-1 % 6));
+        
+        //display possibleBranchIndices
+        foreach (int i in possibleBranchIndices)
+        {
+            Debug.Log("possibleBranchIndices: " + i + "");
+        }
+
+        // Shuffle the possibleBranchIndices list to randomize the order
+        Shuffle(possibleBranchIndices);
+        
+        foreach (int branchIndex in possibleBranchIndices)
+        {
+            Debug.Log("attempted branch index: " + branchIndex);
+            RaycastHit2D neighborHit = Physics2D.Raycast(neighbors[branchIndex], Vector2.zero, 0, LayerMask.GetMask("Default"));
             if (neighborHit)
             {
                 HexType neighborHexType = neighborHit.collider.gameObject.GetComponent<HexType>();
-                // Check if the hex is land (biome > 1) and doesn't already have a river and isn't a mountain
+                // Check if the hex is valid for river continuation
                 if (neighborHexType.GetHexBiome() > 1 && !neighborHexType.HasRiver() && neighborHexType.GetHexBiome() != 7)
                 {
-                    chosenBranchIndex = randomIndex;
-                    break; // Exit the loop if a suitable neighbor is found
+                    chosenBranchIndex = branchIndex;
+                    break; // Valid neighbor found, exit loop
                 }
             }
-            
-            possibleBranchIndices.RemoveAt(randomIndex);
-            attempts++;
         }
 
         // Check after the loop if a neighbor was chosen
@@ -606,8 +618,7 @@ public class MapMaker : MonoBehaviour
             if (chosenNeighborHexType.GetHexBiome() > 1)
             {
                 //set the neighbor hex to be the new current hex
-                Debug.Log("START RIVER");
-                GenerateRiver(new Tuple<HexType, int>(chosenNeighborHexType, (chosenBranchIndex + 3) % 6), riverLength - 1);
+                GenerateRiver(new Tuple<HexType, int>(chosenNeighborHexType, ToolBox.Mod(chosenBranchIndex + 3, 6)), riverLength - 1);
             }
         }
     }
@@ -700,7 +711,7 @@ public class MapMaker : MonoBehaviour
                             
                             List<Vector2> neighbors = HexIterator.GetNeighbors(pos);
                             List<int> possibleBranchIndices = new List<int>();
-                            possibleBranchIndices.Add((iterator.GetAxis() + 3) % 6);
+                            possibleBranchIndices.Add((ToolBox.Mod(iterator.GetAxis() + 3, 6)));
                             for (int i = 0; i < neighbors.Count; i++)
                             {
                                 RaycastHit2D sourceNeighborHit = Physics2D.Raycast(neighbors[i], neighbors[i], 0, LayerMask.GetMask("Default"));
@@ -780,6 +791,7 @@ public class MapMaker : MonoBehaviour
             {
                 //test if neighborHex is water
                 HexType nextHex = iterator.Next();
+               
                 
                 if(nextHex == null)
                 {
@@ -787,11 +799,15 @@ public class MapMaker : MonoBehaviour
                     break;
                 }
                 
+                Debug.Log("nextHex location: " + nextHex.transform.position.ToString() + "");
+                
                 if (nextHex.GetHexBiome() < 2)
                 {
                     //if it is, assign newHex to be the river source
                     nextHex = iterator.Previous();
+                    
                     pos = nextHex.transform.position;
+                    Debug.Log("supposed source location: " + pos.ToString());
 
                     List<Vector2> neighbors = HexIterator.GetNeighbors(pos);
                     List<int> possibleBranchIndices = new List<int>();
@@ -824,5 +840,22 @@ public class MapMaker : MonoBehaviour
 
         return riverSources;
     }
+    
+    
+    
+    
+    public static void Shuffle<T>(List<T> list)
+    {
+        System.Random random = new System.Random();
+        int n = list.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = random.Next(n + 1);
+            (list[k], list[n]) = (list[n], list[k]); // Tuple deconstruction for swapping
+        }
+    }
+
+
     
 }

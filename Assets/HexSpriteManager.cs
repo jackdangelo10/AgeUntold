@@ -131,8 +131,8 @@ public class HexSpriteManager : MonoBehaviour
         
         if (_keyToRiverSpriteIndex.TryGetValue(key, out int spriteIndex))
         {
-            Debug.Log("Sprite index: " + spriteIndex + " for key: " + key + "");
-            Debug.Log("riverSprites size: " + riverSprites.Length + "");
+            //Debug.Log("Sprite index: " + spriteIndex + " for key: " + key + "");
+            //Debug.Log("riverSprites size: " + riverSprites.Length + "");
             return riverSprites[spriteIndex];
         }
         
