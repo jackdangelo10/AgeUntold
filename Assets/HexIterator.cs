@@ -72,7 +72,7 @@ public class HexIterator
 
     public HexType Previous()
     {
-        Debug.Log("Axis: " + _iterationAxis + "");
+        //Debug.Log("Axis: " + _iterationAxis + "");
         switch (_iterationAxis)
         {
             case Axis.southwestToNortheast:

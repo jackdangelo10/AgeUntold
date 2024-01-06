@@ -164,40 +164,61 @@ public class MapMaker : MonoBehaviour
         
         
     }
-
-    //FIX: Handle case of hexes on the edge of the map?????
+    
     private void AddShallowWater()
     {
-        foreach(Transform child in hexes.transform)
-        {
-            HexType childHex = child.GetComponent<HexType>();
+        foreach (Transform child in hexes.transform)
+        {   
+            HexType currentHex = child.GetComponent<HexType>();
             
-            //if the hex is not water, check if it is an edge case and fix it
-            if(childHex.GetHexBiome() > 1)
+            
+            //if hex is water, skip it
+            if(currentHex.GetHexBiome() < 2)
             {
                 continue;
             }
             
-            //else, check if it has a land neighbor
             Vector2 currentPosition = child.position;
             List<Vector2> neighbors = HexIterator.GetNeighbors(currentPosition);
-
-            for (int i = 0; i < neighbors.Count; i++)
+            
+            //check if it is an edge case and fix it
+            if(currentPosition.x == 0) 
             {
-                RaycastHit2D hit = Physics2D.Raycast(neighbors[i], neighbors[i], 0, LayerMask.GetMask("Default"));
+                neighbors.Add(new Vector2(currentPosition.x + mapSize.x * HorizontalOffsetFactor, currentPosition.y - VerticalOffsetFactor)); //3
+                neighbors.Add(new Vector2(currentPosition.x + mapSize.x * HorizontalOffsetFactor, currentPosition.y)); //4
+                neighbors.Add(new Vector2(currentPosition.x + mapSize.x * HorizontalOffsetFactor, currentPosition.y + VerticalOffsetFactor)); //5
+            }
+            else if(ToolBox.ApproximatelyEqual(currentPosition.x , HorizontalOffsetFactor / 2, .01f))
+            {
+                neighbors.Add(new Vector2(currentPosition.x + mapSize.x * HorizontalOffsetFactor, currentPosition.y)); //4
+            }
+            else if (ToolBox.ApproximatelyEqual(currentPosition.x, (mapSize.x - 1) * HorizontalOffsetFactor, .01f))
+            {
+                //Debug.Log("TRIGGERED");
+                neighbors.Add(new Vector2(currentPosition.x - mapSize.x * HorizontalOffsetFactor, currentPosition.y)); //1
+            }
+            else if (ToolBox.ApproximatelyEqual(currentPosition.x, (mapSize.x - 1) * HorizontalOffsetFactor + HorizontalOffsetFactor / 2, .01f))
+            {
+                Debug.Log("TRIGGERED");
+                neighbors.Add(new Vector2(0, currentPosition.y + VerticalOffsetFactor)); //0
+                neighbors.Add(new Vector2(HorizontalOffsetFactor / 2 , currentPosition.y)); //1
+                neighbors.Add(new Vector2(0, currentPosition.y - VerticalOffsetFactor)); //2
+            }
+
+            foreach (Vector2 neighbor in neighbors)
+            {
+                RaycastHit2D hit = Physics2D.Raycast(neighbor, neighbor, 0, LayerMask.GetMask("Default"));
                 if (hit)
                 {
                     HexType testHex = hit.collider.gameObject.GetComponent<HexType>();
-                    //test if the hex is land
-                    if(testHex.GetHexBiome() > 1)
+                    //test if the hex is water
+                    if(testHex.GetHexBiome() == 0)
                     {
-                        //if it is, set the current hex to shallow water
-                        if (childHex != null)
+                        //if it is, set the neighbor hex to shallow water
+                        if (testHex != null)
                         {
-                            childHex.SetHexBiome(1);
+                            testHex.SetHexBiome(1);
                         }
-                        
-                        break;
                     }
                 }
             }
@@ -467,8 +488,7 @@ public class MapMaker : MonoBehaviour
     }
 
 
-    //FIX: some river sources dont face the right way
-    //FIX: some rivers go into ocean ????
+    //FIX: Very hard to reproduce, but sometimes rivers will remain the default sprite.
     private void AddRivers()
     {
         
@@ -479,7 +499,7 @@ public class MapMaker : MonoBehaviour
         foreach(Tuple<HexType, int> riverSource in riverSources)
         {
             int riverLength = UnityEngine.Random.Range(1, 18) + 3;
-            Debug.Log("START RIVER");
+            //Debug.Log("START RIVER");
             GenerateRiver(riverSource, riverLength); 
         }
     }
@@ -626,8 +646,7 @@ public class MapMaker : MonoBehaviour
             }
         }
     }
-
-    //FIX: Why the fuck is everything going left
+    
     //NOTE: HashSet is used to avoid duplicates
     private HashSet<Tuple<HexType, int>> RandomRiverSources()
     {
@@ -683,10 +702,11 @@ public class MapMaker : MonoBehaviour
                             
                             pos = nextHex.transform.position;   
                             
-                            Debug.Log("(RANDOM SOURCE) supposed source location: " + pos.ToString());
+                            //Debug.Log("(RANDOM SOURCE) supposed source location: " + pos.ToString());
                             
                             List<Vector2> neighbors = HexIterator.GetNeighbors(pos);
                             List<int> possibleSinkIndices = new List<int>();
+                            possibleSinkIndices.Add(iterator.GetAxis());
                             for (int i = 0; i < neighbors.Count; i++)
                             {
                                 RaycastHit2D sourceNeighborHit = Physics2D.Raycast(neighbors[i], neighbors[i], 0, LayerMask.GetMask("Default"));
@@ -702,13 +722,8 @@ public class MapMaker : MonoBehaviour
                                 }
                             }
                             
-                            //output all possibleSinkIndices
-                            foreach (int i in possibleSinkIndices)
-                            {
-                                Debug.Log("possibleSinkIndices: " + i + "");
-                            }
-                            
                             //after all possibleSinkIndices are found, choose one at random
+                            //ensure that this is not empty
                             int flowSourceIndex = possibleSinkIndices[UnityEngine.Random.Range(0, possibleSinkIndices.Count)];
                             //add the river source to the list
                             
@@ -747,7 +762,7 @@ public class MapMaker : MonoBehaviour
                 
                 if(nextHex == null)
                 {
-                    Debug.Log("nextHex is null");
+                    //Debug.Log("nextHex is null");
                     break;
                 }
                 
@@ -757,7 +772,7 @@ public class MapMaker : MonoBehaviour
                     nextHex = iterator.Previous();
                     
                     pos = nextHex.transform.position;
-                    Debug.Log("(LAND SOURCE) supposed source location: " + pos.ToString());
+                    //Debug.Log("(LAND SOURCE) supposed source location: " + pos.ToString());
 
                     List<Vector2> neighbors = HexIterator.GetNeighbors(pos);
                     List<int> possibleSinkIndices = new List<int>();

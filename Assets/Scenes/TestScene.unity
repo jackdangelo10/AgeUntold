@@ -264,8 +264,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mapSize: {x: 120, y: 100}
   hex: {fileID: 6160422622246314959, guid: ac79774dd729980448230356b3dff5e7, type: 3}
+  river: {fileID: 2726344678109554849, guid: b130ebaeef5377245b9eef41778b92bd, type: 3}
   hexes: {fileID: 386505213}
-  masses: 1
+  masses: 15
   generateButton: {fileID: 1642495823}
   grow: {x: 20, y: 26}
   freq: 10
@@ -670,7 +671,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -733, y: -427}
+  m_AnchoredPosition: {x: -733, y: -349}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1642495823

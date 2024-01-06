@@ -127,7 +127,7 @@ public class HexSpriteManager : MonoBehaviour
         {
             key += i.ToString();
         }
-        Debug.Log("Key: " + key);
+        //Debug.Log("Key: " + key);
         
         if (_keyToRiverSpriteIndex.TryGetValue(key, out int spriteIndex))
         {
