@@ -110,7 +110,7 @@ public class CameraControl : MonoBehaviour
         }
 
         float minY = _cam.orthographicSize - 2;
-        float maxY = (height / 2);
+        float maxY = Mathf.Lerp(height, height / 2, (zoomLevel - minZoom) / (maxZoom - minZoom));
         
         
         if(pos.y < minY)

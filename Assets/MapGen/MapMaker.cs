@@ -16,7 +16,7 @@ public class MapMaker : MonoBehaviour
     public GameObject hexes; //assigned in inspector as parent of all hexes
     public int masses = 15;
     public Button generateButton;
-    CameraControl _cameraControl;
+    EditorCameraControl _cameraControl;
 
     public Vector2 grow = new Vector2(4, 7);
     public int freq = 3;
@@ -29,8 +29,6 @@ public class MapMaker : MonoBehaviour
         transform.position = new Vector3(GetComponent<MapMaker>().mapSize.x / 2 * HorizontalOffsetFactor, GetComponent<MapMaker>().mapSize.y / 2 * VerticalOffsetFactor, -10);
         _cameraControl.height = mapSize.y * VerticalOffsetFactor;
         _cameraControl.width = mapSize.x * HorizontalOffsetFactor;
-        _cameraControl.barrierLeft.offset = new Vector2(-(mapSize.x * HorizontalOffsetFactor) / 2 - 51, 0);
-        _cameraControl.barrierRight.offset = new Vector2((mapSize.x * HorizontalOffsetFactor) / 2 + 51, 0);
         
         //delay the generation of the ocean background so that the camera can be centered first
         Debug.Log("Generating ocean background");
@@ -160,7 +158,7 @@ public class MapMaker : MonoBehaviour
         }
         
         
-        _cameraControl = GetComponent<CameraControl>();
+        _cameraControl = GetComponent<EditorCameraControl>();
         Generate();
         generateButton.onClick.RemoveListener(ReloadScene);
         generateButton.onClick.AddListener(ReloadScene);
