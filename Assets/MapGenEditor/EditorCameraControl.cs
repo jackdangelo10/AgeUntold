@@ -28,7 +28,7 @@ public class EditorCameraControl : MonoBehaviour
     void Start()
     {
         _cam = GetComponent<Camera>();
-        transform.position = new Vector3(GetComponent<MapMaker>().mapSize.x / 2 * HorizontalOffsetFactor, GetComponent<MapMaker>().mapSize.y / 2 * VerticalOffsetFactor, -10);
+        transform.position = new Vector3(GetComponent<EditorMapMaker>().mapSize.x / 2 * HorizontalOffsetFactor, GetComponent<EditorMapMaker>().mapSize.y / 2 * VerticalOffsetFactor, -10);
     }
 
     // Update is called once per frame
