@@ -6,7 +6,6 @@ using UnityEngine;
 
 public class HexType : MonoBehaviour
 {
-    System.Random random = new System.Random();
     public int type = 0;
     public int grow = 1;
     public int freq = 1;
@@ -73,18 +72,6 @@ public class HexType : MonoBehaviour
         }
     }
 
-    public void GenerateResources()
-    {
-        //1 to 3 resources per tile
-        _resources = new Resource[random.Next(1, 4)];
-        
-        switch (_hexBiomeIndex)
-        {
-            case 0:
-                
-                break;
-        }
-    }
 
     public void Grow()
     {

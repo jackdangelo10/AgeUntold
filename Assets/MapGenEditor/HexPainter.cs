@@ -1,6 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class HexPainter : MonoBehaviour
 {
@@ -15,26 +14,68 @@ public class HexPainter : MonoBehaviour
     }
 
     // Update is called once per frame
+    //FIX : the goddamn hills are forests
     void Update()
     {
         if (Input.GetMouseButton(0)) // Check for left mouse click
         {
             Vector3 pos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
             RaycastHit2D hit = Physics2D.Raycast(pos, pos, 0, LayerMask.GetMask("Default"));
+
             if (hit)
             {
                 GameObject hitObject = hit.collider.gameObject;
-                GameObject newHex = Instantiate(_mapEditorUI.GetHexPrefab(), hitObject.transform.position, Quaternion.identity, hexes.transform);
+                HexType hexType = hitObject.GetComponent<HexType>();
 
-                // Instantiate and add children of hexPrefab to the new hex
-                foreach (Transform child in _mapEditorUI.GetHexPrefab().transform)
+                if (hexType != null)
                 {
-                    Transform childTransform = child.transform;
-                    Instantiate(child.gameObject, childTransform.position, childTransform.rotation, newHex.transform);
+                    // Set Hex Biome to the selected option in MapEditorUI
+                    hexType.SetHexBiome(_mapEditorUI.biomeDropdown.value);
+                    
+                    // Remove existing terrain children
+                    foreach (Transform child in hitObject.transform)
+                    {
+                        GameObject.Destroy(child.gameObject);
+                    }
+
+                    // Get the hex prefab from MapEditorUI
+                    GameObject hexPrefab = _mapEditorUI.GetHexPrefab();
+
+                    // Instantiate and add children (terrain) from the hexPrefab to the hitObject
+                    foreach (Transform child in hexPrefab.transform)
+                    {
+                        GameObject childObject = Instantiate(child.gameObject, hitObject.transform);
+                        Transform childTransform = childObject.transform;
+                        childObject.transform.localPosition = childTransform.localPosition;
+                        childObject.transform.localRotation = childTransform.localRotation;
+                    }
+
+                    // if land, swap neighbors that are deep ocean to shallow ocean
+                    if (_mapEditorUI.biomeDropdown.value > 1)
+                    {
+                        List<Vector2> neighbors = HexIterator.GetNeighbors(hitObject.transform.position);
+                        foreach (Vector2 neighbor in neighbors)
+                        {
+                            RaycastHit2D hitTest = Physics2D.Raycast(neighbor, neighbor, 0, LayerMask.GetMask("Default"));
+                            if (hitTest)
+                            {
+                                HexType testHex = hitTest.collider.gameObject.GetComponent<HexType>();
+                                //test if the hex is deep ocean
+                                if(testHex.GetHexBiome() == 0)
+                                {
+                                    //if it is, set the neighbor hex to shallow water
+                                    if (testHex != null)
+                                    {
+                                        testHex.SetHexBiome(1);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                        
                 }
-                
-                Destroy(hitObject); // Remove the original hex
             }
         }
     }
+
 }
